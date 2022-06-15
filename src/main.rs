@@ -1,3 +1,5 @@
+use self_update::{cargo_crate_version};
+use semver::Version;
 use log::{error, info};
 use tokio::sync::mpsc::UnboundedSender;
 use tokio::time::Instant;
@@ -619,6 +621,9 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, mut app: App, tui_sender: Unb
 
 #[tokio::main]
 async fn main() {
+
+    update().await;
+
     Builder::from_env(Env::default().default_filter_or("info")).init();
 
     // sync => async
@@ -627,18 +632,14 @@ async fn main() {
     // async => sync
     let (tokio_sender, tui_receiver) = channel::<(String, u8)>();
 
-
-
-
     // Create a random PeerId
     let local_key = identity::Keypair::generate_ed25519();
     let local_peer_id = PeerId::from(local_key.public());
-    //println!("Local peer id: {:?}", local_peer_id);
 
     // Set up an encrypted TCP Transport over the Mplex and Yamux protocols
     let transport = libp2p::development_transport(local_key.clone()).await.expect("Pila");
 
-    let topic = Topic::new("test-net");
+    let topic = Topic::new("rant-net");
 
     let mut swarm = {
         // To content-address message, we can take the hash of message and use it as an ID.
@@ -792,4 +793,100 @@ async fn main() {
 
         }
     }
+}
+
+
+
+
+// This works but it will bump into the rate limiter of GITHUB API
+//fn update() {
+//
+//    let status =
+//        self_update::backends::github::Update::configure()
+//        .repo_owner("ludeed")
+//        .repo_name("rant")
+//        .bin_name("rant.exe")
+//        .show_download_progress(true)
+//        .current_version(cargo_crate_version!())
+//        .build().expect("failed do update (step 1)")
+//        .update().expect("failed do update (step 2)");
+//
+//    println!("Update status: `{}`!", status.version());
+//}
+
+use std::io::{stdin, stdout, Read, Write};
+use std::str;
+
+
+fn pause() {
+
+}
+
+async fn update() {
+    let current_version = cargo_crate_version!();
+    let current_version = Version::parse(current_version).unwrap();
+    println!("Current Version: {}", current_version);
+
+    println!("Checking for updates...");
+    let resp = reqwest::get("https://github.com/ludeed/rant/releases/latest")
+        .await.expect("Failed to query Github");
+    let latest_version : Vec<&str> = resp.url().path().split("/").collect();
+    let mut latest_version = latest_version[latest_version.len() - 1].chars();
+    latest_version.next();
+    let latest_version = latest_version.as_str();
+    let latest_version = Version::parse(latest_version).unwrap();
+
+    if latest_version > current_version {
+        println!("There is an updated version on github: {}", latest_version);
+        let mut stdout = stdout();
+        stdout.write(b"Want to update? (Y/n): ").unwrap();
+        stdout.flush().unwrap();
+        let mut buff : Vec<u8> = Vec::new();
+        stdin().read(&mut buff).unwrap();
+
+        let opt = String::from_utf8(buff).unwrap();
+
+        if (opt == "n") || (opt == "N") {
+            process::exit(0);
+        }
+
+        let tmp_dir = tempfile::Builder::new()
+                .prefix("self_update")
+                .tempdir_in(::std::env::current_dir().unwrap()).unwrap();
+        let tmp_zip_path = tmp_dir.path().join(format!("rant-v{}.zip", latest_version));
+        println!("{:?}", tmp_zip_path);
+        let tmp_zip = ::std::fs::File::create(&tmp_zip_path).unwrap();
+
+        let download_url = format!("https://github.com/LudeeD/rant/releases/download/v{}/rant-v{}.zip", latest_version, latest_version);
+        println!("{download_url}");
+
+        self_update::Download::from_url(&download_url)
+            .set_header(reqwest::header::ACCEPT, "application/octet-stream".parse().unwrap())
+            .download_to(tmp_zip).unwrap();
+
+        let bin_name = std::path::PathBuf::from("rant.exe");
+        //pause();
+        self_update::Extract::from_source(&tmp_zip_path)
+            .archive(self_update::ArchiveKind::Zip)
+            .extract_file(&tmp_dir.path(), &bin_name).unwrap();
+
+        //let tmp_file = tmp_dir.path().join("replacement_tmp");
+        let bin_path = tmp_dir.path().join(bin_name);
+        self_update::Move::from_source(&bin_path)
+            //.replace_using_temp(&tmp_file)
+            .to_dest(&::std::env::current_exe().unwrap()).unwrap();
+
+        tmp_dir.close().unwrap();
+
+
+        println!("");
+        println!("Updated :)");
+        println!("Launch $ ./rant.exe again");
+
+        process::exit(0);
+    }else {
+        println!("");
+        println!("Updated :)");
+    }
+
 }
