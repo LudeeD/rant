@@ -2573,6 +2573,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "rant"
+version = "1.0.0"
+dependencies = [
+ "bincode",
+ "chrono",
+ "crc32fast",
+ "crossterm",
+ "env_logger 0.9.0",
+ "futures",
+ "libp2p",
+ "log",
+ "pretty_env_logger",
+ "rand 0.8.5",
+ "reqwest",
+ "self_update",
+ "semver 1.0.10",
+ "serde",
+ "tempfile",
+ "tokio",
+ "tui",
+ "unicode-width",
+]
+
+[[package]]
 name = "redox_syscall"
 version = "0.2.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2667,30 +2691,6 @@ dependencies = [
  "untrusted",
  "web-sys",
  "winapi",
-]
-
-[[package]]
-name = "rust-chat-app"
-version = "0.0.1"
-dependencies = [
- "bincode",
- "chrono",
- "crc32fast",
- "crossterm",
- "env_logger 0.9.0",
- "futures",
- "libp2p",
- "log",
- "pretty_env_logger",
- "rand 0.8.5",
- "reqwest",
- "self_update",
- "semver 1.0.10",
- "serde",
- "tempfile",
- "tokio",
- "tui",
- "unicode-width",
 ]
 
 [[package]]

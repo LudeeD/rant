@@ -3,8 +3,8 @@ name = "rant"
 path = "src/main.rs"
 
 [package]
-name = "rust-chat-app"
-version = "0.0.1"
+name = "rant"
+version = "1.0.0"
 edition = "2021"
 #TODO Add keys
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
